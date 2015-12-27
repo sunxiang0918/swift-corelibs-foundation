@@ -15,15 +15,17 @@ public class NSIndexPath : NSObject, NSCopying, NSSecureCoding {
         _indexes = []
     }
     public init(indexes: UnsafePointer<Int>, length: Int) {
-        _indexes = []
-        for var idx = 0; idx < length; idx++ {
-            _indexes.append(indexes[idx])
-        }
+        _indexes = Array(UnsafeBufferPointer(start: indexes, count: length))
     }
     
     private init(indexes: [Int]) {
         _indexes = indexes
     }
+    
+    public override func copy() -> AnyObject {
+        return copyWithZone(nil)
+    }
+    
     public func copyWithZone(zone: NSZone) -> AnyObject { NSUnimplemented() }
     public convenience init(index: Int) {
         self.init(indexes: [index])

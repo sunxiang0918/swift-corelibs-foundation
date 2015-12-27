@@ -97,7 +97,7 @@ CF_EXTERN_C_BEGIN
 #include <CoreFoundation/CFLogUtilities.h>
 #include <CoreFoundation/CFRuntime.h>
 #include <limits.h>
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #include <xlocale.h>
 #include <unistd.h>
 #include <sys/time.h>
@@ -164,6 +164,14 @@ CF_PRIVATE CFIndex __CFActiveProcessorCount();
 #if defined(__i386__) || defined(__x86_64__)
     #if defined(__GNUC__)
         #define HALT do {asm __volatile__("int3"); kill(getpid(), 9); __builtin_unreachable(); } while (0)
+    #elif defined(_MSC_VER)
+        #define HALT do { DebugBreak(); abort(); __builtin_unreachable(); } while (0)
+    #else
+        #error Compiler not supported
+    #endif
+#elif defined(__ppc__) || (__arm__)
+    #if defined(__GNUC__)
+        #define HALT do {asm __volatile__("trap"); kill(getpid(), 9); __builtin_unreachable(); } while (0)
     #elif defined(_MSC_VER)
         #define HALT do { DebugBreak(); abort(); __builtin_unreachable(); } while (0)
     #else
@@ -495,7 +503,7 @@ CF_INLINE Boolean __CFLockTry(volatile CFLock_t *lock) {
     return (InterlockedCompareExchange((LONG volatile *)lock, ~0, 0) == 0);
 }
 
-#elif DEPLOYMENT_TARGET_LINUX
+#elif DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 
 typedef int32_t CFLock_t;
 #define CFLockInit 0
@@ -645,6 +653,8 @@ extern void _CFRuntimeSetInstanceTypeIDAndIsa(CFTypeRef cf, CFTypeID newTypeID);
 #define CF_OBJC_FUNCDISPATCHV(typeID, obj, ...) do { } while (0)
 #define CF_OBJC_CALLV(obj, ...) (0)
 #define CF_IS_OBJC(typeID, obj) (0)
+
+#define CF_SWIFT_CALLV(obj, fn, ...) __CFSwiftBridge.fn((CFSwiftRef)obj, ##__VA_ARGS__)
 
 extern uintptr_t __CFRuntimeObjCClassTable[];
 

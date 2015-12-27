@@ -118,6 +118,10 @@ public class NSCalendar : NSObject, NSCopying, NSSecureCoding {
         return true
     }
     
+    public override func copy() -> AnyObject {
+        return copyWithZone(nil)
+    }
+    
     public func copyWithZone(zone: NSZone) -> AnyObject {
         NSUnimplemented()
     }
@@ -365,11 +369,7 @@ public class NSCalendar : NSObject, NSCopying, NSSecureCoding {
     public func dateFromComponents(comps: NSDateComponents) -> NSDate? {
         var (vector, compDesc) = _convert(comps)
         
-        let oldTz = timeZone
-        let tempTz = comps.timeZone
-        if let tz = tempTz {
-            timeZone = tz
-        }
+        self.timeZone = comps.timeZone ?? timeZone
         
         var at: CFAbsoluteTime = 0.0
         let res: Bool = withUnsafeMutablePointer(&at) { t in
@@ -378,15 +378,11 @@ public class NSCalendar : NSObject, NSCopying, NSSecureCoding {
             }
         }
         
-        if tempTz != nil {
-            self.timeZone = oldTz
-        }
-        
         if res {
             return NSDate(timeIntervalSinceReferenceDate: at)
+        } else {
+            return nil
         }
-        
-        return nil
     }
     
     private func _setup(unitFlags: NSCalendarUnit, field: NSCalendarUnit, type: String, inout compDesc: [Int8]) {
@@ -419,7 +415,7 @@ public class NSCalendar : NSObject, NSCopying, NSSecureCoding {
     private func _setComp(unitFlags: NSCalendarUnit, field: NSCalendarUnit, vector: [Int32], inout compIndex: Int, setter: (Int32) -> Void) {
         if unitFlags.contains(field) {
             setter(vector[compIndex])
-            compIndex++
+            compIndex += 1
         }
     }
     
@@ -1097,7 +1093,7 @@ public class NSDateComponents : NSObject, NSCopying, NSSecureCoding {
     internal var _calendar: NSCalendar?
     internal var _timeZone: NSTimeZone?
     internal var _values = [Int](count: 19, repeatedValue: NSDateComponentUndefined)
-    internal override init() {
+    public override init() {
         super.init()
     }
     
@@ -1208,6 +1204,10 @@ public class NSDateComponents : NSObject, NSCopying, NSSecureCoding {
     
     static public func supportsSecureCoding() -> Bool {
         return true
+    }
+    
+    public override func copy() -> AnyObject {
+        return copyWithZone(nil)
     }
     
     public func copyWithZone(zone: NSZone) -> AnyObject {

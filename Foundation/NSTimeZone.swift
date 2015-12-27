@@ -58,6 +58,10 @@ public class NSTimeZone : NSObject, NSCopying, NSSecureCoding, NSCoding {
         return true
     }
     
+    public override func copy() -> AnyObject {
+        return copyWithZone(nil)
+    }
+    
     public func copyWithZone(zone: NSZone) -> AnyObject {
         return self
     }
@@ -162,7 +166,15 @@ extension NSTimeZone {
     public class func timeZoneDataVersion() -> String { NSUnimplemented() }
     
     public var secondsFromGMT: Int { NSUnimplemented() }
-    public var abbreviation: String? { NSUnimplemented() }
+
+    /// The abbreviation for the receiver, such as "EDT" (Eastern Daylight Time). (read-only)
+    ///
+    /// This invokes `abbreviationForDate:` with the current date as the argument.
+    public var abbreviation: String? {
+        let currentDate = NSDate()
+        return abbreviationForDate(currentDate)
+    }
+
     public var daylightSavingTime: Bool { NSUnimplemented() }
     public var daylightSavingTimeOffset: NSTimeInterval { NSUnimplemented() }
     /*@NSCopying*/ public var nextDaylightSavingTimeTransition: NSDate?  { NSUnimplemented() }

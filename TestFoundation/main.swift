@@ -20,4 +20,42 @@ internal func testBundle() -> NSBundle {
 }
 
 // For the Swift version of the Foundation tests, we must manually list all test cases here.
-XCTMain([TestNSString(), TestNSArray(), TestNSDictionary(), TestNSSet(), TestNSNumber(), TestNSPropertyList(), TestNSURL(), TestNSIndexSet(), TestNSCharacterSet(), TestNSFileManger()])
+XCTMain([
+    TestNSAffineTransform(),
+    TestNSArray(),
+    TestNSBundle(),
+    TestNSByteCountFormatter(),
+    TestNSCalendar(),
+    TestNSCharacterSet(),
+    TestNSData(),
+    TestNSDate(),
+    TestNSDictionary(),
+    TestNSFileManger(),
+    TestNSGeometry(),
+    TestNSHTTPCookie(),
+    TestNSIndexPath(),
+    TestNSIndexSet(),
+    TestNSJSONSerialization(),
+    TestNSLocale(),
+    TestNSNotificationCenter(),
+    TestNSNumber(),
+    TestNSNumberFormatter(),
+    TestNSPipe(),
+    TestNSProcessInfo(),
+    TestNSPropertyList(),
+    TestNSRange(),
+    TestNSRunLoop(),
+    TestNSScanner(),
+    TestNSSet(),
+    TestNSString(),
+    TestNSThread(),
+    TestNSTimer(),
+    TestNSTimeZone(),
+    TestNSURL(),
+    TestNSURLComponents(),
+    TestNSURLRequest(),
+    TestNSURLResponse(),
+    TestNSNull(),
+    TestNSUUID(),
+    TestNSXMLParser()
+])

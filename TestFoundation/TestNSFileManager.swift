@@ -17,13 +17,15 @@
 
 class TestNSFileManger : XCTestCase {
     
-    var allTests : [(String, () -> ())] {
+    var allTests : [(String, () -> Void)] {
         return [
             ("test_createDirectory", test_createDirectory ),
             ("test_createFile", test_createFile ),
             ("test_fileSystemRepresentation", test_fileSystemRepresentation),
             ("test_fileAttributes", test_fileAttributes),
             ("test_directoryEnumerator", test_directoryEnumerator),
+            ("test_contentsOfDirectoryAtPath", test_contentsOfDirectoryAtPath),
+            ("test_subpathsOfDirectoryAtPath", test_subpathsOfDirectoryAtPath)
         ]
     }
     
@@ -96,8 +98,33 @@ class TestNSFileManger : XCTestCase {
         
         do {
             let attrs = try fm.attributesOfItemAtPath(path)
-            // TODO: Actually verify the contents of the dictionary.
+            
             XCTAssertTrue(attrs.count > 0)
+            
+            let fileSize = attrs[NSFileSize] as? NSNumber
+            XCTAssertEqual(fileSize!.longLongValue, 0)
+            
+            let fileModificationDate = attrs[NSFileModificationDate] as? NSDate
+            XCTAssertGreaterThan(NSDate().timeIntervalSince1970, fileModificationDate!.timeIntervalSince1970)
+            
+            let filePosixPermissions = attrs[NSFilePosixPermissions] as? NSNumber
+            XCTAssertNotEqual(filePosixPermissions!.longLongValue, 0)
+            
+            let fileReferenceCount = attrs[NSFileReferenceCount] as? NSNumber
+            XCTAssertEqual(fileReferenceCount!.longLongValue, 1)
+            
+            let fileSystemNumber = attrs[NSFileSystemNumber] as? NSNumber
+            XCTAssertNotEqual(fileSystemNumber!.longLongValue, 0)
+            
+            let fileSystemFileNumber = attrs[NSFileSystemFileNumber] as? NSNumber
+            XCTAssertNotEqual(fileSystemFileNumber!.longLongValue, 0)
+            
+            let fileType = attrs[NSFileType] as? String
+            XCTAssertEqual(fileType!, NSFileTypeRegular)
+            
+            let fileOwnerAccountID = attrs[NSFileOwnerAccountID] as? NSNumber
+            XCTAssertNotNil(fileOwnerAccountID)
+            
         } catch let err {
             XCTFail("\(err)")
         }
@@ -214,4 +241,96 @@ class TestNSFileManger : XCTestCase {
         }
     }
     
+    func test_contentsOfDirectoryAtPath() {
+        let fm = NSFileManager.defaultManager()
+        let path = "/tmp/testdir"
+        let itemPath1 = "/tmp/testdir/item"
+        let itemPath2 = "/tmp/testdir/item2"
+        
+        ignoreError { try fm.removeItemAtPath(path) }
+        
+        do {
+            try fm.createDirectoryAtPath(path, withIntermediateDirectories: false, attributes: nil)
+            fm.createFileAtPath(itemPath1, contents: NSData(), attributes: nil)
+            fm.createFileAtPath(itemPath2, contents: NSData(), attributes: nil)
+        } catch _ {
+            XCTFail()
+        }
+        
+        do {
+            let entries = try fm.contentsOfDirectoryAtPath(path)
+            
+            XCTAssertEqual(2, entries.count)
+            XCTAssertTrue(entries.contains("item"))
+            XCTAssertTrue(entries.contains("item2"))
+        }
+        catch _ {
+            XCTFail()
+        }
+        
+        do {
+            try fm.contentsOfDirectoryAtPath("")
+            
+            XCTFail()
+        }
+        catch _ {
+            // Invalid directories should fail.
+        }
+        
+        do {
+            try fm.removeItemAtPath(path)
+        } catch {
+            XCTFail("Failed to clean up files")
+        }
+    }
+    
+    func test_subpathsOfDirectoryAtPath() {
+        let fm = NSFileManager.defaultManager()
+        let path = "/tmp/testdir"
+        let path2 = "/tmp/testdir/sub"
+        let itemPath1 = "/tmp/testdir/item"
+        let itemPath2 = "/tmp/testdir/item2"
+        let itemPath3 = "/tmp/testdir/sub/item3"
+                
+        ignoreError { try fm.removeItemAtPath(path) }
+        
+        do {
+            try fm.createDirectoryAtPath(path, withIntermediateDirectories: false, attributes: nil)
+            fm.createFileAtPath(itemPath1, contents: NSData(), attributes: nil)
+            fm.createFileAtPath(itemPath2, contents: NSData(), attributes: nil)
+            
+            try fm.createDirectoryAtPath(path2, withIntermediateDirectories: false, attributes: nil)
+            fm.createFileAtPath(itemPath3, contents: NSData(), attributes: nil)
+        } catch _ {
+            XCTFail()
+        }
+        
+        do {
+            let entries = try fm.subpathsOfDirectoryAtPath(path)
+            
+            XCTAssertEqual(4, entries.count)
+            XCTAssertTrue(entries.contains("item"))
+            XCTAssertTrue(entries.contains("item2"))
+            XCTAssertTrue(entries.contains("sub"))
+            XCTAssertTrue(entries.contains("sub/item3"))
+        }
+        catch _ {
+            XCTFail()
+        }
+        
+        do {
+            try fm.subpathsOfDirectoryAtPath("")
+            
+            XCTFail()
+        }
+        catch _ {
+            // Invalid directories should fail.
+        }
+        
+        do {
+            try fm.removeItemAtPath(path)
+        } catch {
+            XCTFail("Failed to clean up files")
+        }
+    }
 }

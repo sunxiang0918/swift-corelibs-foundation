@@ -11,17 +11,16 @@
 #ifndef __COREFOUNDATION_FORSWIFTFOUNDATIONONLY__
 #define __COREFOUNDATION_FORSWIFTFOUNDATIONONLY__ 1
 
-#define NS_ASSUME_NONNULL_BEGIN _Pragma("clang assume_nonnull begin")
-#define NS_ASSUME_NONNULL_END   _Pragma("clang assume_nonnull end")
-
 #include <CoreFoundation/CFBase.h>
 #include <CoreFoundation/CFNumber.h>
 #include <CoreFoundation/CFLocaleInternal.h>
 #include <CoreFoundation/CFCalendar.h>
+#include <CoreFoundation/CFPriv.h>
+#include <CoreFoundation/CFXMLInterface.h>
+#include <fts.h>
 
-#import <fts.h>
-
-NS_ASSUME_NONNULL_BEGIN
+CF_ASSUME_NONNULL_BEGIN
+CF_IMPLICIT_BRIDGING_ENABLED
 
 struct __CFSwiftObject {
     uintptr_t isa;
@@ -99,10 +98,11 @@ struct _NSStringBridge {
     CFIndex (*length)(CFTypeRef str);
     UniChar (*characterAtIndex)(CFTypeRef str, CFIndex idx);
     void (*getCharacters)(CFTypeRef str, CFRange range, UniChar *buffer);
-    CFIndex (*__getBytes)(CFTypeRef str, CFRange range, uint8_t *buffer, CFIndex maxBufLen, CFIndex *usedBufLen);
+    CFIndex (*__getBytes)(CFTypeRef str, CFStringEncoding encoding, CFRange range, uint8_t *buffer, CFIndex maxBufLen, CFIndex *usedBufLen);
     const char *_Nullable (*_Nonnull _fastCStringContents)(CFTypeRef str);
     const UniChar *_Nullable (*_Nonnull _fastCharacterContents)(CFTypeRef str);
     bool (*_getCString)(CFTypeRef str, char *buffer, size_t len, UInt32 encoding);
+    bool (*_encodingCantBeStoredInEightBitCFString)(CFTypeRef str);
 };
 
 struct _NSMutableStringBridge {
@@ -115,6 +115,72 @@ struct _NSMutableStringBridge {
     void (*_cfAppendCString)(CFTypeRef str, const char *chars, CFIndex appendLength);
 };
 
+struct _NSXMLParserBridge {
+    _CFXMLInterface _Nullable (*_Nonnull currentParser)();
+    _CFXMLInterfaceParserInput _Nonnull (*_Nonnull _xmlExternalEntityWithURL)(_CFXMLInterface interface, const char *url, const char * identifier, _CFXMLInterfaceParserContext context, _CFXMLInterfaceExternalEntityLoader originalLoaderFunction);
+    
+    _CFXMLInterfaceParserContext _Nonnull (*_Nonnull getContext)(_CFXMLInterface ctx);
+    
+    void (*internalSubset)(_CFXMLInterface ctx, const unsigned char *name, const unsigned char *ExternalID, const unsigned char *SystemID);
+    int (*isStandalone)(_CFXMLInterface ctx);
+    int (*hasInternalSubset)(_CFXMLInterface ctx);
+    int (*hasExternalSubset)(_CFXMLInterface ctx);
+    _CFXMLInterfaceEntity _Nonnull (*_Nonnull getEntity)(_CFXMLInterface ctx, const unsigned char *name);
+    void (*notationDecl)(_CFXMLInterface ctx,
+                         const unsigned char *name,
+                         const unsigned char *publicId,
+                         const unsigned char *systemId);
+    void (*attributeDecl)(_CFXMLInterface ctx,
+                          const unsigned char *elem,
+                          const unsigned char *fullname,
+                          int type,
+                          int def,
+                          const unsigned char *defaultValue,
+                          _CFXMLInterfaceEnumeration tree);
+    void (*elementDecl)(_CFXMLInterface ctx,
+                        const unsigned char *name,
+                        int type,
+                        _CFXMLInterfaceElementContent content);
+    void (*unparsedEntityDecl)(_CFXMLInterface ctx,
+                               const unsigned char *name,
+                               const unsigned char *publicId,
+                               const unsigned char *systemId,
+                               const unsigned char *notationName);
+    void (*startDocument)(_CFXMLInterface ctx);
+    void (*endDocument)(_CFXMLInterface ctx);
+    void (*startElementNs)(_CFXMLInterface ctx,
+                           const unsigned char *localname,
+                           const unsigned char *prefix,
+                           const unsigned char *URI,
+                           int nb_namespaces,
+                           const unsigned char *_Nonnull *_Nonnull namespaces,
+                           int nb_attributes,
+                           int nb_defaulted,
+                           const unsigned char *_Nonnull *_Nonnull attributes);
+    void (*endElementNs)(_CFXMLInterface ctx,
+                         const unsigned char *localname,
+                         const unsigned char *prefix,
+                         const unsigned char *URI);
+    void (*characters)(_CFXMLInterface ctx,
+                       const unsigned char *ch,
+                       int len);
+    void (*processingInstruction)(_CFXMLInterface ctx,
+                                  const unsigned char *target,
+                                  const unsigned char *data);
+    void (*cdataBlock)(_CFXMLInterface ctx,
+                       const unsigned char *value,
+                       int len);
+    void (*comment)(_CFXMLInterface ctx, const unsigned char *value);
+    void (*externalSubset)(_CFXMLInterface ctx,
+                           const unsigned char *name,
+                           const unsigned char *ExternalID,
+                           const unsigned char *SystemID);
+};
+
+struct _NSRunLoop {
+    _Nonnull CFTypeRef (*_Nonnull _new)(CFRunLoopRef rl);
+};
+
 struct _CFSwiftBridge {
     struct _NSObjectBridge NSObject;
     struct _NSArrayBridge NSArray;
@@ -125,9 +191,14 @@ struct _CFSwiftBridge {
     struct _NSMutableSetBridge NSMutableSet;
     struct _NSStringBridge NSString;
     struct _NSMutableStringBridge NSMutableString;
+    struct _NSXMLParserBridge NSXMLParser;
+    struct _NSRunLoop NSRunLoop;
 };
 
 __attribute__((__visibility__("hidden"))) extern struct _CFSwiftBridge __CFSwiftBridge;
+
+
+CF_EXPORT CFStringEncoding __CFDefaultEightBitStringEncoding;
 
 extern void _CFRuntimeBridgeTypeToClass(CFTypeID type, const void *isa);
 
@@ -149,8 +220,10 @@ extern void _CFURLInitWithFileSystemPathRelativeToBase(CFURLRef url, CFStringRef
 extern Boolean _CFURLInitWithURLString(CFURLRef url, CFStringRef string, Boolean checkForLegalCharacters, _Nullable CFURLRef baseURL);
 extern Boolean _CFURLInitAbsoluteURLWithBytes(CFURLRef url, const UInt8 *relativeURLBytes, CFIndex length, CFStringEncoding encoding, _Nullable CFURLRef baseURL);
 
+extern CFHashCode CFHashBytes(uint8_t *bytes, CFIndex length);
 extern CFIndex __CFProcessorCount();
 extern uint64_t __CFMemorySize();
+extern CFStringRef _CFProcessNameString(void);
 extern CFIndex __CFActiveProcessorCount();
 extern CFDictionaryRef __CFGetEnvironment();
 extern int32_t __CFGetPid();
@@ -160,6 +233,7 @@ extern void _CFDataInit(CFMutableDataRef memory, CFOptionFlags flags, CFIndex ca
 extern int32_t _CF_SOCK_STREAM();
 
 extern CFStringRef CFCopySystemVersionString(void);
+extern CFDictionaryRef _CFCopySystemVersionDictionary(void);
 
 extern Boolean _CFCalendarInitWithIdentifier(CFCalendarRef calendar, CFStringRef identifier);
 extern Boolean _CFCalendarComposeAbsoluteTimeV(CFCalendarRef calendar, /* out */ CFAbsoluteTime *atp, const char *componentDesc, int32_t *vector, int32_t count);
@@ -193,6 +267,11 @@ extern int _CFOpenFileWithMode(const char *path, int opts, mode_t mode);
 extern int _CFOpenFile(const char *path, int opts);
 extern void *_CFReallocf(void *ptr, size_t size);
 
+CFHashCode CFStringHashNSString(CFStringRef str);
+
+extern CFTypeRef _CFRunLoopGet2(CFRunLoopRef rl);
+
+extern CFIndex __CFStringEncodeByteStream(CFStringRef string, CFIndex rangeLoc, CFIndex rangeLen, Boolean generatingExternalFile, CFStringEncoding encoding, uint8_t lossByte,  UInt8 * _Nullable buffer, CFIndex max, CFIndex * _Nullable usedBufLen);
 
 typedef	unsigned char __cf_uuid[16];
 typedef	char __cf_uuid_string[37];
@@ -211,6 +290,7 @@ extern void _cf_uuid_unparse(const _cf_uuid_t uu, _cf_uuid_string_t out);
 extern void _cf_uuid_unparse_lower(const _cf_uuid_t uu, _cf_uuid_string_t out);
 extern void _cf_uuid_unparse_upper(const _cf_uuid_t uu, _cf_uuid_string_t out);
 
-NS_ASSUME_NONNULL_END
+CF_IMPLICIT_BRIDGING_DISABLED
+CF_ASSUME_NONNULL_END
 
 #endif /* __COREFOUNDATION_FORSWIFTFOUNDATIONONLY__ */

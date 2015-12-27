@@ -161,7 +161,7 @@ static const Float64Bits doubleOneBits = {.floatValue = 1.0f};
 #define BITSFORDOUBLEZERO doubleZeroBits.bits
 #define BITSFORDOUBLEONE  doubleOneBits.bits
 
-#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI || DEPLOYMENT_TARGET_LINUX
+#if DEPLOYMENT_TARGET_MACOSX || DEPLOYMENT_TARGET_EMBEDDED || DEPLOYMENT_TARGET_EMBEDDED_MINI || DEPLOYMENT_TARGET_LINUX || DEPLOYMENT_TARGET_FREEBSD
 #define FLOAT_POSITIVE_2_TO_THE_64	0x1.0p+64L
 #define FLOAT_NEGATIVE_2_TO_THE_127	-0x1.0p+127L
 #define FLOAT_POSITIVE_2_TO_THE_127	0x1.0p+127L
@@ -1099,6 +1099,7 @@ static inline void _CFNumberInit(CFNumberRef result, CFNumberType type, const vo
         case kCFNumberFloat32Type: memmove((void *)&result->_pad, valuePtr, 4); break;
         case kCFNumberFloat64Type: memmove((void *)&result->_pad, valuePtr, 8); break;
     }
+    __CFBitfieldSetValue(((struct __CFNumber *)result)->_base._cfinfo[CF_INFO_BITS], 4, 0, (uint8_t)__CFNumberTypeTable[type].canonicalType);
 }
 
 CF_EXPORT void _CFNumberInitBool(CFNumberRef result, Boolean value) {

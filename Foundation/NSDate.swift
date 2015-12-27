@@ -60,6 +60,10 @@ public class NSDate : NSObject, NSCopying, NSSecureCoding, NSCoding {
     public required init?(coder aDecoder: NSCoder) {
         NSUnimplemented()
     }
+    
+    public override func copy() -> AnyObject {
+        return copyWithZone(nil)
+    }
 
     public func copyWithZone(zone: NSZone) -> AnyObject {
         return self
@@ -72,15 +76,51 @@ public class NSDate : NSObject, NSCopying, NSSecureCoding, NSCoding {
     public func encodeWithCoder(aCoder: NSCoder) {
         
     }
-    
+
+    /**
+     A string representation of the date object (read-only).
+
+     The representation is useful for debugging only.
+
+     There are a number of options to acquire a formatted string for a date
+     including: date formatters (see
+     [NSDateFormatter](//apple_ref/occ/cl/NSDateFormatter) and
+     [Data Formatting Guide](//apple_ref/doc/uid/10000029i)),
+     and the `NSDate` methods `descriptionWithLocale:`,
+     `dateWithCalendarFormat:timeZone:`, and
+     `descriptionWithCalendarFormat:timeZone:locale:`.
+     */
     public override var description: String {
         get {
-            return CFCopyDescription(_cfObject)._swiftObject
+            let dateFormatterRef = CFDateFormatterCreate(kCFAllocatorSystemDefault, nil, kCFDateFormatterFullStyle, kCFDateFormatterFullStyle)
+            let timeZone = CFTimeZoneCreateWithTimeIntervalFromGMT(kCFAllocatorSystemDefault, 0.0)
+            CFDateFormatterSetProperty(dateFormatterRef, kCFDateFormatterTimeZoneKey, timeZone)
+            CFDateFormatterSetFormat(dateFormatterRef, "uuuu-MM-dd HH:mm:ss '+0000'"._cfObject)
+
+            return CFDateFormatterCreateStringWithDate(kCFAllocatorSystemDefault, dateFormatterRef, _cfObject)._swiftObject
         }
     }
-    
+
+    /**
+     Returns a string representation of the receiver using the given locale.
+
+     - Parameter locale: An `NSLocale` object.
+
+       If you pass `nil`, `NSDate` formats the date in the same way as the
+       `description` property.
+
+     - Returns: A string representation of the receiver, using the given locale,
+       or if the locale argument is `nil`, in the international format
+       `YYYY-MM-DD HH:MM:SS ±HHMM`, where `±HHMM` represents the time zone
+       offset in hours and minutes from UTC (for example,
+       "2001-03-24 10:45:32 +0600")
+     */
     public func descriptionWithLocale(locale: AnyObject?) -> String {
-        return description
+        guard let aLocale = locale else { return description }
+        let dateFormatterRef = CFDateFormatterCreate(kCFAllocatorSystemDefault, (aLocale as! NSLocale)._cfObject, kCFDateFormatterFullStyle, kCFDateFormatterFullStyle)
+        CFDateFormatterSetProperty(dateFormatterRef, kCFDateFormatterTimeZoneKey, CFTimeZoneCopySystem())
+
+        return CFDateFormatterCreateStringWithDate(kCFAllocatorSystemDefault, dateFormatterRef, _cfObject)._swiftObject
     }
     
     override internal var _cfTypeID: CFTypeID {
@@ -178,23 +218,16 @@ extension CFDateRef : _NSBridgable {
 /// - Experiment: This is a draft API currently under consideration for official import into Foundation as a suitable alternative to the AutoreleasingUnsafeMutablePointer usage case of returning a NSDate + NSTimeInterval or using a pair of dates representing a range
 /// - Note: Since this API is under consideration it may be either removed or revised in the near future
 public class NSDateInterval : NSObject {
-    internal var _start: NSDate
-    public var start: NSDate {
-        return _start
-    }
-    
-    internal var _end: NSDate
-    public var end: NSDate {
-        return _end
-    }
+    public internal(set) var start: NSDate
+    public internal(set) var end: NSDate
     
     public var interval: NSTimeInterval {
         return end.timeIntervalSinceReferenceDate - start.timeIntervalSinceReferenceDate
     }
     
     public required init(start: NSDate, end: NSDate) {
-        _start = start
-        _end = end
+        self.start = start
+        self.end = end
     }
     
     public convenience init(start: NSDate, interval: NSTimeInterval) {
