@@ -9,6 +9,12 @@
 
 import CoreFoundation
 
+#if os(OSX) || os(iOS)
+import Darwin
+#elseif os(Linux)
+import Glibc
+#endif
+
 internal extension String {
     
     internal var _startOfLastPathComponent : String.CharacterView.Index {
@@ -237,14 +243,28 @@ public extension NSString {
         if fixedSelf == "/" {
             return fixedSelf
         }
-        if fixedSelf.length <= 1 {
-            return ""
-        }
         
-        return String(fixedSelf.characters.prefixUpTo(fixedSelf._startOfLastPathComponent))
+        switch fixedSelf._startOfLastPathComponent {
+        
+        // relative path, single component
+        case fixedSelf.startIndex:
+            return ""
+        
+        // absolute path, single component
+        case fixedSelf.startIndex.successor():
+            return "/"
+        
+        // all common cases
+        case let startOfLast:
+            return String(fixedSelf.characters.prefixUpTo(startOfLast.predecessor()))
+        }
     }
     
     internal func _stringByFixingSlashes(compress compress : Bool = true, stripTrailing: Bool = true) -> String {
+        if _swiftObject == "/" {
+            return _swiftObject
+        }
+        
         var result = _swiftObject
         if compress {
             result.withMutableCharacters { characterView in
@@ -493,4 +513,32 @@ public struct NSSearchPathDomainMask : OptionSetType {
 
 public func NSSearchPathForDirectoriesInDomains(directory: NSSearchPathDirectory, _ domainMask: NSSearchPathDomainMask, _ expandTilde: Bool) -> [String] {
     NSUnimplemented()
+}
+
+public func NSHomeDirectory() -> String {
+    return NSHomeDirectoryForUser(nil)!
+}
+
+public func NSHomeDirectoryForUser(user: String?) -> String? {
+    let usr = user ?? NSUserName()
+    var info = passwd()
+    let bufSize = Int(BUFSIZ * 10)
+    var buffer = [Int8](count: bufSize, repeatedValue: 0)
+    var result: UnsafeMutablePointer<passwd> = nil
+
+    var homeDir: String? = nil
+    if getpwnam_r(usr, &info, &buffer, bufSize, &result) == 0 && info.pw_dir != nil {
+        homeDir = String.fromCString(info.pw_dir)
+    }
+
+    return homeDir
+}
+
+public func NSUserName() -> String {
+    let bufSize = Int(BUFSIZ)
+    var buffer = [Int8](count: bufSize, repeatedValue: 0)
+    if getlogin_r(&buffer, bufSize) == 0 {
+        return String.fromCString(buffer)!
+    }
+    fatalError("Could not get current logon name.")
 }
